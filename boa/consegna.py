@@ -85,16 +85,56 @@ def _quando(ts):
         return "data ignota"
 
 
+# Tutto quello che puo' spezzare una riga o pilotare un terminale. splitlines()
+# di Python conosce gia' questi separatori, e li usiamo come elenco: se un
+# carattere puo' cominciare una riga nuova, puo' anche uscire dal margine.
+_SEPARATORI = "\n\r\v\f\x1c\x1d\x1e\x85  "
+
+
+def campo(valore, quanto=60):
+    """Un pezzo di intestazione, ridotto a una riga sola e senza comandi.
+
+    Trovato dalla revisione avversariale dell'11/08/2026, ed era il difetto
+    piu' grave di boa: l'intestazione di una voce usciva grezza, su una riga
+    che non cominciava con il margine. Bastava un a capo dentro il nome di un
+    progetto per scrivere righe non marginate nel contesto di un'altra
+    sessione, e da li' riprodurre la riga di chiusura e fingere un turno
+    dell'utente.
+
+    Nessun campo che finisce in una intestazione puo' contenere un separatore
+    di riga, un carattere di controllo o un ESC.
+    """
+    testo = "" if valore is None else str(valore)
+    for c in _SEPARATORI:
+        testo = testo.replace(c, " ")
+    testo = "".join(" " if (ord(c) < 32 or ord(c) == 127) else c for c in testo)
+    testo = " ".join(testo.split())
+    # I marcatori della cornice sono fatti di "===". Un campo di intestazione e'
+    # metadato, non prosa di nessuno: puo' perdere una fila di uguali senza
+    # perdere significato, e cosi' non puo' imitare la riga di chiusura nemmeno
+    # dentro il margine. Il corpo no: quello va riportato parola per parola,
+    # come la cornice promette, e li' la difesa e' il margine.
+    while "==" in testo:
+        testo = testo.replace("==", "=")
+    if len(testo) > quanto:
+        testo = testo[:quanto] + "..."
+    return testo
+
+
 def _intestazione(voce):
     da = voce.get("da") or {}
-    prog = da.get("progetto") or "progetto ignoto"
-    sid = da.get("sessione") or "sessione ignota"
-    tipo = voce.get("tipo") or "messaggio"
-    pezzi = [voce.get("id") or "?", tipo, f"da {prog} (sessione {sid[:8]})", _quando(voce.get("ts"))]
-    rif = voce.get("riferimento")
+    prog = campo(da.get("progetto")) or "progetto ignoto"
+    sid = campo(da.get("sessione")) or "sessione ignota"
+    tipo = campo(voce.get("tipo"), 20) or "messaggio"
+    pezzi = [campo(voce.get("id"), 20) or "?", tipo,
+             f"da {prog} (sessione {sid[:8]})", _quando(voce.get("ts"))]
+    rif = campo(voce.get("riferimento"), 20)
     if rif:
         pezzi.append(f"risponde a {rif}")
-    return "--- " + "  ".join(pezzi) + " ---"
+    # Il margine vale anche per l'intestazione. Cosi' la regola che il lettore
+    # deve ricordare e' una sola e non ha eccezioni: dentro la cornice, tutto
+    # quello che viene dalla lavagna comincia con "| ".
+    return MARGINE + "--- " + "  ".join(pezzi) + " ---"
 
 
 def _corpo(voce):
@@ -107,7 +147,15 @@ def _corpo(voce):
     testo = taglia(voce.get("testo"))
     if not testo.strip():
         return MARGINE + "(vuota)"
-    return "\n".join(MARGINE + r for r in testo.splitlines())
+    righe = []
+    for r in testo.splitlines():
+        # ESC non e' un separatore di riga, quindi splitlines() lo lascia
+        # passare intatto fino al terminale, dove \x1b[6A\x1b[2K risale di sei
+        # righe e cancella la cornice appena stampata. Il margine reggeva
+        # contro chi imita il testo, non contro chi lo riscrive da sopra.
+        r = "".join(" " if (ord(c) < 32 or ord(c) == 127) else c for c in r)
+        righe.append(MARGINE + r)
+    return "\n".join(righe)
 
 
 def cornice(voci, titolo=None, note=None):

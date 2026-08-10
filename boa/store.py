@@ -230,8 +230,21 @@ def _voci(righe):
             v = json.loads(r.decode("utf-8"))
         except Exception:
             continue
-        if isinstance(v, dict) and isinstance(v.get("id"), str):
-            out.append(v)
+        if not (isinstance(v, dict) and isinstance(v.get("id"), str)):
+            continue
+        # json.loads accetta \ud800, cioe' una surrogata spaiata, e produce una
+        # str che poi non si puo' ricodificare in utf-8. La lavagna e'
+        # append-only e non si ripulisce mai: una riga cosi', scritta a mano una
+        # volta sola, faceva morire `boa lavagna` e `boa leggi` con
+        # UnicodeEncodeError da li' in avanti, e `leggi` aveva gia' spostato il
+        # segnalibro prima di stampare, quindi le voci erano anche perse.
+        # Una voce che non si puo' stampare vale come una riga illeggibile:
+        # si salta, e la lavagna continua a funzionare.
+        try:
+            json.dumps(v, ensure_ascii=False).encode("utf-8")
+        except Exception:
+            continue
+        out.append(v)
     return out
 
 
@@ -344,12 +357,58 @@ def nuove(sessione, progetto=None, sposta=True, tetto=TETTO):
     except OSError:
         return []
     righe, usati = _righe_complete(blob)
+
+    # Una riga sola piu' lunga della finestra di lettura fermava la consegna per
+    # sempre, e in silenzio: senza un \n dentro i byte letti, `usati` restava 0,
+    # il segnalibro non si spostava mai piu', e da quel momento nessuna sessione
+    # riceveva piu' niente, ne' quella voce ne' tutte quelle scritte dopo.
+    # boa non scrive righe cosi' (LIMITE_RIGA le rifiuta), ma la lavagna e' un
+    # file e chiunque puo' scriverci a mano. Se la finestra e' piena e non c'e'
+    # un a capo, quella riga si scavalca: si perde una voce malformata invece di
+    # perdere tutte le voci future.
+    if not usati and len(blob) >= LETTURA_MAX:
+        salto = blob.find(b"\n")
+        if salto < 0:
+            # nemmeno oltre la finestra: si va a cercare il prossimo a capo.
+            salto = _prossimo_a_capo(off + len(blob))
+            if salto is None:
+                return []
+            _segna(sessione, salto + 1, None) if sposta else None
+            return []
+        _segna(sessione, off + salto + 1, None) if sposta else None
+        return []
+
     voci = _voci(righe)
     mie = [v for v in voci if per_me(v, sessione, progetto)]
     if sposta and usati:
         _segna(sessione, off + usati, mie[-1]["id"] if mie else None)
     # si tiene la coda, non la testa: se qualcosa va saltato, si salta il vecchio
     return mie[-tetto:] if tetto else mie
+
+
+def _prossimo_a_capo(da, quanto=8 * 1024 * 1024):
+    """Il byte dopo il prossimo a capo a partire da `da`, o None se non c'e'.
+
+    Serve solo alla via di fuga qui sopra: una riga scritta a mano piu' lunga
+    della finestra di lettura. Legge a blocchi per non tirarsi in memoria un
+    file che qualcuno ha gonfiato apposta.
+    """
+    passo = 1024 * 1024
+    try:
+        with open(LAVAGNA, "rb") as f:
+            f.seek(da)
+            letti = 0
+            while letti < quanto:
+                blocco = f.read(passo)
+                if not blocco:
+                    return None
+                i = blocco.find(b"\n")
+                if i >= 0:
+                    return da + letti + i
+                letti += len(blocco)
+    except OSError:
+        return None
+    return None
 
 
 # ------------------------------------------------------------------- stato di una voce
