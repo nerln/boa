@@ -86,6 +86,13 @@ Bastano tre, e aggiungerne un quarto va giustificato.
 - **preso** — sto facendo questa cosa. Serve a non farla in due.
 - **tengo** — sto occupando questa risorsa: una porta, un file grosso, mezza memoria.
   Serve a spiegare a chi guarda `faro` perché quella cosa è lì.
+
+  *Oggi non è un verbo suo.* Chi ha implementato `boa` ha seguito il contratto in
+  `PROGETTO.md`, che elenca cinque tipi e non lo comprende, e ha segnalato la
+  contraddizione invece di risolverla per conto proprio: era la cosa giusta da fare.
+  Nel frattempo `tengo` si scrive come un `preso` che nomina la risorsa. Se meriti un
+  tipo suo lo decide l'uso: quando su dieci `preso` più della metà nominano una porta o
+  della memoria, allora è un verbo.
 - **fatto** — l'ho finita, e quello che tenevo è libero. Serve a chiudere il cerchio,
   ed è il verbo che si dimentica.
 
