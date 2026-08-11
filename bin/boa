@@ -121,6 +121,20 @@ def cmd_hook(args):
         risposta = "{}"
     try:
         print(risposta)
+        sys.stdout.flush()
+    except Exception:
+        pass
+    # Il `pass` qui sopra non bastava, e la revisione avversariale lo ha
+    # dimostrato: con lo standard output su una pipe gia' chiusa, print
+    # fallisce, l'eccezione viene assorbita, ma poi CPython prova a svuotare
+    # sys.stdout mentre chiude l'interprete, fallisce di nuovo dove nessuno
+    # puo' piu' prenderlo, e il processo esce con 120 stampando
+    # "Exception ignored ... BrokenPipeError" sullo stderr. Un hook che esce
+    # con 120 e' esattamente la cosa che questo docstring promette che non
+    # succede. Si sostituisce lo stdout con qualcosa che si puo' chiudere
+    # senza rumore, e la promessa torna vera.
+    try:
+        sys.stdout = open(os.devnull, "w")
     except Exception:
         pass
     return 0
