@@ -438,8 +438,24 @@ for i in range(40):
     store.scrivi(chi("un-altro"), a="tutti", testo=f"voce {i}")
 molte = store.nuove("sess-che-legge", "prova", sposta=True)
 check("una lettura non consegna piu' di TETTO voci", len(molte) == store.TETTO, str(len(molte)))
-check("delle voci saltate si tengono le piu' recenti", molte[-1]["testo"] == "voce 39")
-check("il segnalibro avanza anche sulle voci saltate",
+
+# Prima il segnalibro avanzava su tutto quello che era stato letto mentre venivano
+# consegnate solo le ultime TETTO: le altre sparivano per sempre e in silenzio. Una
+# sessione rumorosa che scriveva dodici voci prima del turno di un'altra ne cancellava
+# il messaggio. Il tetto protegge il contesto, e non deve essere anche un cestino.
+check("si consegnano le piu' vecchie, che e' l'ordine in cui si legge",
+      molte[0]["testo"] == "voce 0" and molte[-1]["testo"] == f"voce {store.TETTO - 1}",
+      f"{molte[0]['testo']} .. {molte[-1]['testo']}")
+
+viste = [v["testo"] for v in molte]
+for _ in range(10):
+    ancora = store.nuove("sess-che-legge", "prova", sposta=True)
+    if not ancora:
+        break
+    viste += [v["testo"] for v in ancora]
+check("nessuna voce si perde: il resto arriva ai giri dopo",
+      viste == [f"voce {i}" for i in range(40)], f"{len(viste)} di 40")
+check("e alla fine non resta niente da consegnare",
       store.nuove("sess-che-legge", "prova", sposta=True) == [])
 
 

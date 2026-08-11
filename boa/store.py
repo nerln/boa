@@ -432,12 +432,36 @@ def nuove(sessione, progetto=None, sposta=True, tetto=TETTO):
         _segna(sessione, off + salto + 1, None) if sposta else None
         return []
 
-    voci = _voci(righe)
-    mie = [v for v in voci if per_me(v, sessione, progetto)]
-    if sposta and usati:
-        _segna(sessione, off + usati, mie[-1]["id"] if mie else None)
-    # si tiene la coda, non la testa: se qualcosa va saltato, si salta il vecchio
-    return mie[-tetto:] if tetto else mie
+    # Il tetto limita quante voci entrano in un contesto in una volta, e serve.
+    # Ma prima il segnalibro avanzava su tutti i byte letti mentre venivano
+    # consegnate solo le ultime `tetto`: le altre sparivano per sempre, senza
+    # che nessuno se ne accorgesse. Una sessione rumorosa che scriveva dodici
+    # voci prima del turno di un'altra ne cancellava in silenzio il messaggio.
+    #
+    # Adesso si consegnano le piu' vecchie, che e' l'ordine in cui si legge, e
+    # il segnalibro si ferma su quello che e' stato davvero consegnato. Il
+    # resto arriva al giro dopo. Il tetto protegge il contesto senza perdere
+    # niente: erano due cose diverse messe in mano allo stesso numero.
+    mie, fine, contate = [], 0, 0
+    scorso = 0
+    for r in righe:
+        scorso += len(r) + 1  # il \n che _righe_complete ha tolto
+        v = _voci([r])
+        if not v:
+            fine = scorso
+            continue
+        if not per_me(v[0], sessione, progetto):
+            fine = scorso
+            continue
+        if tetto and contate >= tetto:
+            break
+        mie.append(v[0])
+        contate += 1
+        fine = scorso
+
+    if sposta and fine:
+        _segna(sessione, off + fine, mie[-1]["id"] if mie else None)
+    return mie
 
 
 def _prossimo_a_capo(da, quanto=8 * 1024 * 1024):
