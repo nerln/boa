@@ -165,8 +165,9 @@ def _append(path, rec):
 FINESTRA_DOPPIONE = 3600
 
 
-def gia_detta(da, tipo, testo, entro=FINESTRA_DOPPIONE, path=None, chiave=None):
-    """L'id di una voce identica e recente dello stesso autore, o None.
+def gia_detta(da, tipo, testo, entro=FINESTRA_DOPPIONE, path=None, chiave=None,
+              ambito="sessione"):
+    """L'id di una voce identica e recente, o None.
 
     Nata la notte dell'11/08/2026 da un guasto vero: `faro annuncia` era stato
     agganciato allo SessionStart, che scatta molto piu' spesso di quanto
@@ -177,6 +178,17 @@ def gia_detta(da, tipo, testo, entro=FINESTRA_DOPPIONE, path=None, chiave=None):
     c'e' ragione perche' ogni scrittore debba tenersi uno stato suo per
     ricordare cosa ha gia' detto.
     """
+    # L'ambito dice di chi e' la notizia, e quindi contro chi va confrontata.
+    #
+    # `sessione`: la notizia appartiene a chi scrive, e due sessioni diverse che
+    # dicono la stessa cosa stanno dicendo due cose. E' il caso normale.
+    #
+    # `macchina`: la notizia e' un fatto della macchina, e allora chi la dice
+    # non conta. Aggiunto la mattina dell'11/08/2026 davanti a un guasto che la
+    # prima deduplica non copriva: sei sessioni diverse avevano scritto sei
+    # volte "la macchina e' in swap", una per sessione, e per la lavagna erano
+    # sei autori distinti quindi sei notizie distinte. Per chi leggeva erano la
+    # stessa riga sei volte.
     sessione = (da or {}).get("sessione") or "anonimo"
     testo = "" if testo is None else str(testo)
     limite = _ora() - entro
@@ -187,7 +199,7 @@ def gia_detta(da, tipo, testo, entro=FINESTRA_DOPPIONE, path=None, chiave=None):
             break
         if v.get("tipo") != tipo:
             continue
-        if (v.get("da") or {}).get("sessione") != sessione:
+        if ambito != "macchina" and (v.get("da") or {}).get("sessione") != sessione:
             continue
         # Con una chiave si confronta la chiave, non il testo. Serve perche' la
         # stessa notizia cambia parole a ogni giro: "swap 4,7 GB, 233829
@@ -204,7 +216,7 @@ def gia_detta(da, tipo, testo, entro=FINESTRA_DOPPIONE, path=None, chiave=None):
 
 
 def scrivi(da, a=TUTTI, tipo="messaggio", testo="", riferimento=None, path=None,
-           una_volta=False, chiave=None):
+           una_volta=False, chiave=None, ambito="sessione"):
     """Aggiunge una voce. `da` e' l'identita' che restituisce sessioni.identita().
 
     Con `una_volta`, se la stessa voce e' gia' sulla lavagna da meno di un'ora
@@ -214,7 +226,8 @@ def scrivi(da, a=TUTTI, tipo="messaggio", testo="", riferimento=None, path=None,
     if tipo not in TIPI:
         raise ValueError(f"tipo sconosciuto: {tipo!r}, i tipi sono {', '.join(TIPI)}")
     da = da or {}
-    if una_volta and gia_detta(da, tipo, testo, path=path, chiave=chiave):
+    if una_volta and gia_detta(da, tipo, testo, path=path, chiave=chiave,
+                               ambito=ambito):
         return None
     rec = {
         "id": _nuovo_id(),
@@ -232,6 +245,8 @@ def scrivi(da, a=TUTTI, tipo="messaggio", testo="", riferimento=None, path=None,
         rec["riferimento"] = str(riferimento)[:64]
     if chiave:
         rec["chiave"] = str(chiave)[:64]
+    if ambito != "sessione":
+        rec["ambito"] = str(ambito)[:32]
     return _append(path or LAVAGNA, rec)
 
 

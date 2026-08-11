@@ -45,7 +45,8 @@ def cmd_scrivi(args):
         rec = store.scrivi(mia, a=args.a, tipo=args.tipo, testo=args.testo,
                            riferimento=args.riferimento,
                            una_volta=getattr(args, "una_volta", False),
-                           chiave=getattr(args, "chiave", None))
+                           chiave=getattr(args, "chiave", None),
+                           ambito=getattr(args, "ambito", "sessione"))
     except ValueError as e:
         print(f"boa: {e}", file=sys.stderr)
         return 2
@@ -181,6 +182,10 @@ def build():
                    help="non riscrivere se l'hai gia' detta da meno di un'ora")
     s.add_argument("--chiave", metavar="K",
                    help="cosa rende due voci 'la stessa notizia', se non il testo")
+    s.add_argument("--ambito", choices=("sessione", "macchina"), default="sessione",
+                   help="di chi e' la notizia: tua (default) o della macchina. "
+                        "Con macchina, chi la dice non conta e il doppione e' un "
+                        "doppione anche se lo scrive un'altra sessione")
     s.set_defaults(fn=cmd_scrivi)
 
     s = sub.add_parser("leggi", help="le voci per me che non ho gia' visto")

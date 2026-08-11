@@ -663,6 +663,39 @@ check("manda rifiuta un destinatario che non e' un id di sessione",
 
 # -------------------------------------------------------------------------- riassunto
 
+
+# --------------------------------------------- 8. una notizia della macchina si dice una volta
+
+section("8. un fatto della macchina non lo ripetono sei sessioni diverse")
+
+fresh()
+a = store.scrivi(chi("sessione-uno"), tipo="avviso", testo="in swap: 4.9GB",
+                 una_volta=True, chiave="swap", ambito="macchina")
+b = store.scrivi(chi("sessione-due"), tipo="avviso", testo="in swap: 5.1GB, altri pageout",
+                 una_volta=True, chiave="swap", ambito="macchina")
+check("la prima sessione la scrive", a is not None)
+check("la seconda no, anche se e' un'altra sessione e il testo e' diverso", b is None)
+
+c = store.scrivi(chi("sessione-tre"), tipo="avviso", testo="3 orfani",
+                 una_volta=True, chiave="orfani", ambito="macchina")
+check("una notizia diversa passa lo stesso", c is not None)
+
+# l'ambito di sessione resta quello di prima: due sessioni che dicono la stessa
+# cosa di se stesse stanno dicendo due cose diverse, e vanno tenute entrambe
+fresh()
+d = store.scrivi(chi("una"), tipo="preso", testo="rifaccio il README",
+                 una_volta=True, chiave="readme")
+e = store.scrivi(chi("altra"), tipo="preso", testo="rifaccio il README",
+                 una_volta=True, chiave="readme")
+check("con l'ambito di sessione due autori diversi passano tutti e due",
+      d is not None and e is not None)
+f = store.scrivi(chi("una"), tipo="preso", testo="rifaccio il README",
+                 una_volta=True, chiave="readme")
+check("ma lo stesso autore non si ripete", f is None)
+check("l'ambito finisce nella voce solo quando non e' quello di default",
+      "ambito" not in d and store.aperte()[0].get("ambito") is None
+      or all("ambito" not in v for v in (d, e)))
+
 print(f"\n{len(PASS)} passati, {len(FAIL)} falliti")
 if FAIL:
     for f in FAIL:
