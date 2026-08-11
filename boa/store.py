@@ -482,7 +482,38 @@ def nuove(sessione, progetto=None, sposta=True, tetto=TETTO):
 
     if sposta and fine:
         _segna(sessione, off + fine, mie[-1]["id"] if mie else None)
-    return mie
+    return _senza_doppioni_di_macchina(mie)
+
+
+def _senza_doppioni_di_macchina(voci):
+    """Collassa le voci che dicono la stessa notizia della macchina.
+
+    La deduplica in scrittura legge e poi scrive, e fra le due cose non c'e'
+    niente: tre sessioni che partono nello stesso istante leggono tutte una
+    lavagna in cui la notizia non c'e' ancora, e la scrivono tutte e tre.
+    Successo davvero, il 12/08/2026 alle 00:05, con lo stesso avviso di swap.
+    Senza un lock quella corsa non si chiude, e boa un lock non lo vuole.
+
+    Si chiude dall'altra parte. Chi scrive vede una lavagna alla volta; **chi
+    legge le vede tutte insieme**, e allora e' li' che si decide. Vale solo per
+    l'ambito macchina, dove per costruzione chi lo dice non conta: due sessioni
+    che dicono la stessa cosa di se stesse stanno dicendo due cose, e quelle
+    restano.
+    """
+    tenute, viste = [], {}
+    for v in voci:
+        chiave = v.get("chiave")
+        if v.get("ambito") != "macchina" or not chiave:
+            tenute.append(v)
+            continue
+        marca = (v.get("tipo"), chiave)
+        if marca in viste:
+            # si tiene la piu' recente: e' quella con i numeri di adesso
+            tenute[viste[marca]] = v
+            continue
+        viste[marca] = len(tenute)
+        tenute.append(v)
+    return tenute
 
 
 def _prossimo_a_capo(da, quanto=8 * 1024 * 1024):

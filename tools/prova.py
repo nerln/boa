@@ -744,6 +744,37 @@ check("con voci di autori diversi non dice niente",
           store.scrivi({"sessione": f"s{i}", "progetto": "p", "cwd": "/tmp"},
                        a="tutti", testo="x") for i in range(4)]) is None)
 
+
+section("10. la corsa in scrittura si chiude dal lato di chi legge")
+
+fresh()
+# Tre sessioni che partono nello stesso istante leggono tutte una lavagna in cui
+# la notizia non c'e' ancora, e la scrivono tutte e tre. E' successo davvero il
+# 12/08/2026 alle 00:05. Qui la corsa si simula scrivendo senza una_volta, che e'
+# esattamente lo stato in cui la lascia una lettura simultanea.
+for i, n in enumerate(("uno", "due", "tre")):
+    store.scrivi(chi(f"sessione-{n}"), tipo="avviso",
+                 testo=f"in swap: 3.7GB, {i} pageout", chiave="swap", ambito="macchina")
+store.scrivi(chi("quarta"), tipo="avviso", testo="2 orfani",
+             chiave="orfani", ambito="macchina")
+store.scrivi(chi("quinta"), tipo="preso", testo="rifaccio il README", chiave="readme")
+store.scrivi(chi("sesta"), tipo="preso", testo="rifaccio il README", chiave="readme")
+
+viste = store.nuove("chi-legge", "prova", sposta=True)
+avvisi_swap = [v for v in viste if v.get("chiave") == "swap"]
+check("le tre voci uguali della macchina arrivano come una",
+      len(avvisi_swap) == 1, f"{len(avvisi_swap)} invece di 1")
+check("e resta la piu' recente, che ha i numeri di adesso",
+      avvisi_swap and "2 pageout" in avvisi_swap[0]["testo"],
+      avvisi_swap[0]["testo"] if avvisi_swap else "")
+check("una notizia diversa della macchina resta",
+      len([v for v in viste if v.get("chiave") == "orfani"]) == 1)
+check("due sessioni che dicono la stessa cosa DI SE STESSE restano due",
+      len([v for v in viste if v.get("tipo") == "preso"]) == 2,
+      str(len([v for v in viste if v.get("tipo") == "preso"])))
+check("il segnalibro e' avanzato su tutto, niente resta indietro",
+      store.nuove("chi-legge", "prova", sposta=True) == [])
+
 print(f"\n{len(PASS)} passati, {len(FAIL)} falliti")
 if FAIL:
     for f in FAIL:
