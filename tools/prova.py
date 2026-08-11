@@ -308,18 +308,29 @@ if os.path.exists(SPIA):
 
 section("6. manda --ora misura il transcript prima di provare, e sopra soglia si rifiuta")
 
-check("la soglia e' 2 MB", consegna.SOGLIA_TRANSCRIPT == 2 * 1024 * 1024)
-check("la soglia sta sotto i 5 MB su cui e' stato visto il guasto",
-      consegna.SOGLIA_TRANSCRIPT < 5 * 1024 * 1024)
+# La soglia e' stata rimisurata la notte dell'11/08/2026, e la prima misura era una
+# deduzione da un caso solo. I due fatti veri: 4,9 MB si riprende (03ae4fe5, risposta
+# piena), 14 MB no (b930fd3d, "Prompt is too long"). Una soglia dedotta da una
+# misura sola aveva escluso per mezza giornata sessioni che si potevano riprendere.
+check("la soglia non supera il piu' grande transcript ripreso davvero",
+      consegna.SOGLIA_TRANSCRIPT <= 5 * 1024 * 1024,
+      str(consegna.SOGLIA_TRANSCRIPT))
+check("e non e' cosi' bassa da escludere quello che funziona",
+      consegna.SOGLIA_TRANSCRIPT >= 4 * 1024 * 1024,
+      str(consegna.SOGLIA_TRANSCRIPT))
+check("resta sotto il punto dove il guasto e' stato visto davvero",
+      consegna.SOGLIA_TRANSCRIPT < 14 * 1024 * 1024)
 
 grosso = os.path.join(TMP, "transcript-grosso.jsonl")
 with open(grosso, "w") as f:
     f.write("{}\n")
-os.truncate(grosso, 3 * 1024 * 1024)      # sparso: 3 MB dichiarati, quasi niente su disco
+os.truncate(grosso, 8 * 1024 * 1024)      # sparso: 8 MB dichiarati, quasi niente su disco
+# 8 e non 3: la soglia e' salita a 5 MB l'11/08/2026, quando si e' misurato che a
+# 4,9 MB la ripresa funziona e a 14 MB no. Il test deve stare sopra la soglia vera.
 pesante = "sess-pesante"
 sessioni.note(pesante, "/tmp/prova", grosso, "prova")
 check("boa misura il transcript della destinataria",
-      sessioni.peso_transcript(pesante) == 3 * 1024 * 1024,
+      sessioni.peso_transcript(pesante) == 8 * 1024 * 1024,
       str(sessioni.peso_transcript(pesante)))
 
 try:
@@ -328,7 +339,7 @@ except OSError:
     pass
 p = cli("manda", pesante, "urgente ma non ci sta", "--ora", env=amb)
 check("manda --ora sopra soglia non chiama claude", not os.path.exists(SPIA), p.stdout[:200])
-check("manda --ora sopra soglia dice quanto pesa", "3.0 MB" in p.stdout, p.stdout[:200])
+check("manda --ora sopra soglia dice quanto pesa", "8.0 MB" in p.stdout, p.stdout[:200])
 check("manda --ora sopra soglia spiega perche' non prova",
       "Prompt is too long" in p.stdout, p.stdout[:200])
 check("manda --ora sopra soglia lascia la voce sulla lavagna",

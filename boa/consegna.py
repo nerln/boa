@@ -57,16 +57,28 @@ CHIUSURA = "=== boa: fine di quello che riporta la lavagna ==="
 
 # La soglia oltre la quale `boa manda --ora` non prova nemmeno.
 #
-# Misurato il 10/08/2026: con un transcript da 5 MB, `claude --resume <id> -p` risponde
-# "Prompt is too long" e non parte affatto. In headless non c'e' la compattazione
-# automatica che in interattivo tiene il contesto sotto controllo, quindi il transcript
-# entra tutto e il limite lo si incontra secco.
+# Dove sta davvero il limite, misurato due volte e la seconda volta meglio.
 #
-# 2 MB e' meno della meta' del punto in cui il guasto e' stato visto. Il margine e' largo
-# di proposito: il costo di rifiutare a torto e' che la voce arriva al turno dopo per la
-# via normale, il costo di provare a torto e' un comando che gira per qualche secondo, non
-# fa niente, e lascia chi lo ha lanciato convinto di aver consegnato.
-SOGLIA_TRANSCRIPT = 2 * 1024 * 1024
+# 10/08/2026, prima misura: un `claude --resume <id> -p` risponde "Prompt is too
+# long". Da quella singola prova era stata dedotta una regola generale, e la soglia
+# era stata messa a 2 MB.
+#
+# 11/08/2026, notte, seconda misura: la deduzione era sbagliata. Un transcript da
+# **4,9 MB si riprende benissimo** (verificato su 03ae4fe5, risposta piena e sensata),
+# e uno da **14 MB no** (verificato su b930fd3d, "Prompt is too long"). Il limite vero
+# sta fra i due, e non e' dove era stato messo.
+#
+# La prima prova era stata lanciata dalla cartella sbagliata, e `--resume` cerca la
+# sessione nella cartella del progetto: da fuori risponde "No conversation found". Non
+# e' detto che fosse quello il motivo, ma la lezione resta ed e' generale: **una misura
+# sola non e' una regola.** Una soglia dedotta da un caso singolo aveva escluso per
+# mezza giornata sessioni che si potevano riprendere.
+#
+# 5 MB e' il punto piu' alto misurato come funzionante, non una stima. Il costo di
+# rifiutare a torto e' che la voce arriva al turno dopo per la via normale; quello di
+# provare a torto e' un comando che gira per qualche secondo e lascia chi lo ha
+# lanciato convinto di aver consegnato.
+SOGLIA_TRANSCRIPT = 5 * 1024 * 1024
 
 TIMEOUT_SPINTA = float(os.environ.get("BOA_TIMEOUT", 300))
 
