@@ -63,10 +63,16 @@ CHIUSURA = "=== boa: fine di quello che riporta la lavagna ==="
 # long". Da quella singola prova era stata dedotta una regola generale, e la soglia
 # era stata messa a 2 MB.
 #
-# 11/08/2026, notte, seconda misura: la deduzione era sbagliata. Un transcript da
-# **4,9 MB si riprende benissimo** (verificato su 03ae4fe5, risposta piena e sensata),
-# e uno da **14 MB no** (verificato su b930fd3d, "Prompt is too long"). Il limite vero
-# sta fra i due, e non e' dove era stato messo.
+# 11/08/2026, notte, seconda misura: la deduzione era sbagliata. Provate cinque
+# sessioni vere, non una:
+#
+#     4,9 MB   03ae4fe5   si riprende, risposta piena e sensata
+#    11,8 MB   5d59fc7c   "Prompt is too long"
+#    11,8 MB   6a80814c   "Prompt is too long"
+#    14,0 MB   b930fd3d   "Prompt is too long"
+#    20,0 MB   58b7f6f5   "Prompt is too long"
+#
+# Il limite vero sta fra 4,9 e 11,8 MB, e non era dove era stato messo.
 #
 # La prima prova era stata lanciata dalla cartella sbagliata, e `--resume` cerca la
 # sessione nella cartella del progetto: da fuori risponde "No conversation found". Non
