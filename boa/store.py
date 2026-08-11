@@ -159,11 +159,63 @@ def _append(path, rec):
 
 # ------------------------------------------------------------------------ scrivere
 
-def scrivi(da, a=TUTTI, tipo="messaggio", testo="", riferimento=None, path=None):
-    """Aggiunge una voce. `da` e' l'identita' che restituisce sessioni.identita()."""
+# Due voci uguali dello stesso tipo, entro questa finestra, sono la stessa voce
+# detta due volte. Un'ora: abbastanza da assorbire un automatismo che scatta a
+# ogni avvio di sessione, poco da non nascondere un fatto che cambia.
+FINESTRA_DOPPIONE = 3600
+
+
+def gia_detta(da, tipo, testo, entro=FINESTRA_DOPPIONE, path=None, chiave=None):
+    """L'id di una voce identica e recente dello stesso autore, o None.
+
+    Nata la notte dell'11/08/2026 da un guasto vero: `faro annuncia` era stato
+    agganciato allo SessionStart, che scatta molto piu' spesso di quanto
+    immaginassi, e in un'ora aveva messo sulla lavagna dodici avvisi quasi
+    identici. boa poi li consegnava tutti e dodici dentro ogni sessione a ogni
+    prompt. Il difetto era di faro, ma il posto giusto dove ripararlo e' qui:
+    una lavagna deve reggere a uno scrittore rumoroso chiunque esso sia, e non
+    c'e' ragione perche' ogni scrittore debba tenersi uno stato suo per
+    ricordare cosa ha gia' detto.
+    """
+    sessione = (da or {}).get("sessione") or "anonimo"
+    testo = "" if testo is None else str(testo)
+    limite = _ora() - entro
+    # 64 KB di coda: qualche centinaio di voci, che con una lavagna su cui
+    # scrivono solo i modelli e solo di proposito copre molto piu' di un'ora.
+    for v in reversed(_leggi_coda(path or LAVAGNA, 64 * 1024)):
+        if v.get("ts", 0) < limite:
+            break
+        if v.get("tipo") != tipo:
+            continue
+        if (v.get("da") or {}).get("sessione") != sessione:
+            continue
+        # Con una chiave si confronta la chiave, non il testo. Serve perche' la
+        # stessa notizia cambia parole a ogni giro: "swap 4,7 GB, 233829
+        # pageout" e "swap 4,7 GB, 236196 pageout" sono la stessa notizia, e un
+        # confronto sul testo non le aggancerebbe mai. Cosa sia "la stessa
+        # notizia" lo sa chi scrive, non la lavagna: boa si limita a onorare la
+        # chiave che le viene data.
+        if chiave:
+            if v.get("chiave") == chiave:
+                return v.get("id")
+        elif v.get("testo") == testo:
+            return v.get("id")
+    return None
+
+
+def scrivi(da, a=TUTTI, tipo="messaggio", testo="", riferimento=None, path=None,
+           una_volta=False, chiave=None):
+    """Aggiunge una voce. `da` e' l'identita' che restituisce sessioni.identita().
+
+    Con `una_volta`, se la stessa voce e' gia' sulla lavagna da meno di un'ora
+    non ne scrive un'altra e restituisce None. Chi chiama capisce dalla
+    risposta se ha detto qualcosa di nuovo o si e' ripetuto.
+    """
     if tipo not in TIPI:
         raise ValueError(f"tipo sconosciuto: {tipo!r}, i tipi sono {', '.join(TIPI)}")
     da = da or {}
+    if una_volta and gia_detta(da, tipo, testo, path=path, chiave=chiave):
+        return None
     rec = {
         "id": _nuovo_id(),
         "ts": _ora(),
@@ -178,6 +230,8 @@ def scrivi(da, a=TUTTI, tipo="messaggio", testo="", riferimento=None, path=None)
     }
     if riferimento:
         rec["riferimento"] = str(riferimento)[:64]
+    if chiave:
+        rec["chiave"] = str(chiave)[:64]
     return _append(path or LAVAGNA, rec)
 
 

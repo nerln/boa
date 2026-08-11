@@ -43,10 +43,17 @@ def cmd_scrivi(args):
     mia = _identita(args)
     try:
         rec = store.scrivi(mia, a=args.a, tipo=args.tipo, testo=args.testo,
-                           riferimento=args.riferimento)
+                           riferimento=args.riferimento,
+                           una_volta=getattr(args, "una_volta", False),
+                           chiave=getattr(args, "chiave", None))
     except ValueError as e:
         print(f"boa: {e}", file=sys.stderr)
         return 2
+    if rec is None:
+        # Non e' un errore: e' la lavagna che rifiuta di ripetersi. Chi chiama
+        # capisce dallo stdout vuoto che non ha detto niente di nuovo, e puo'
+        # tacere anche lui invece di notificare due volte la stessa cosa.
+        return 0
     print(f"{rec['id']}  {rec['tipo']}  a {rec['a']}")
     return 0
 
@@ -156,6 +163,10 @@ def build():
                    metavar="DEST", help="tutti, progetto:<nome>, oppure un id di sessione")
     s.add_argument("--tipo", default="messaggio", choices=store.TIPI)
     s.add_argument("--riferimento", metavar="ID", help="l'id della voce a cui rispondi")
+    s.add_argument("--una-volta", action="store_true", dest="una_volta",
+                   help="non riscrivere se l'hai gia' detta da meno di un'ora")
+    s.add_argument("--chiave", metavar="K",
+                   help="cosa rende due voci 'la stessa notizia', se non il testo")
     s.set_defaults(fn=cmd_scrivi)
 
     s = sub.add_parser("leggi", help="le voci per me che non ho gia' visto")
