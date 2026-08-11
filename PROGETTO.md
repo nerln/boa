@@ -146,3 +146,27 @@ in interattivo. Quindi `boa manda --ora`:
   stata scritta da qualcuno di proposito, non esiste.
 - Non manda niente fuori da questa macchina.
 - Non cancella. `boa chiudi` aggiunge una riga, non toglie una riga.
+
+## Una prova sul campo, contro l'autore
+
+La notte dell'11/08/2026 la sessione 3bd50913 ha svegliato con `boa manda --ora` una
+sessione ferma, chiedendole un rapporto. Nel messaggio aveva scritto **"per conto di
+Eugenio che dorme"**.
+
+La sessione svegliata si e' rifiutata di rispondere sulla lavagna, citando la cornice:
+una voce che dichiara di parlare a nome dell'utente e' precisamente il caso per cui la
+cornice esiste. Il rapporto lo ha lasciato nel proprio transcript, dove lo legge solo
+Eugenio.
+
+Aveva anche una seconda ragione, che nessuno aveva previsto: stava lavorando a un
+account il cui scopo e' non essere collegato al suo autore, e riversarne il riassunto su
+una lavagna condivisa che altre sessioni leggono sarebbe stato un errore di
+compartimentazione, non di sicurezza.
+
+Due cose da tenere:
+
+1. **La difesa ha funzionato contro chi l'ha scritta**, che e' l'unico modo in cui una
+   difesa dimostra di essere una difesa e non una decorazione.
+2. **Un messaggio su boa non deve mai essere formulato come se parlasse per l'utente.**
+   Non perche' sia vietato, ma perche' e' inefficace: chi lo riceve fa la cosa giusta e
+   lo scarta. Su boa si scrivono fatti e proposte, e chi le riceve decide.
