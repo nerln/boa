@@ -52,7 +52,7 @@ Se una modifica ne rompe una, la modifica è sbagliata, non l'invariante.
 5. **`boa hook` esce sempre a zero e stampa `{}` quando qualcosa non torna.** Gira a ogni
    prompt di ogni sessione: un hook che fallisce ferma il prompt di qualcun altro, e boa
    non vale il rischio di fermare il lavoro di un'altra sessione. `consegna.hook()` ha un
-   `except Exception` che copre tutto, e `cmd_hook` in `bin/boa` non ha nessun ramo che
+   `except Exception` che copre tutto, e `cmd_hook` in `boa/cli.py` non ha nessun ramo che
    possa uscire diverso da zero. I casi provati sono: `~/.boa` che non esiste, payload che
    non è json, json rotto, stdin vuoto, json che non è un oggetto, `session_id` mancante o
    di un tipo assurdo.
@@ -107,7 +107,8 @@ Se una modifica ne rompe una, la modifica è sbagliata, non l'invariante.
 ## Come è fatto
 
 ```
-bin/boa            la CLI: scrivi, leggi, lavagna, chiudi, chi, hook, manda
+boa/cli.py         la CLI: scrivi, leggi, lavagna, chiudi, chi, hook, manda
+bin/boa            lo stesso comando, lanciato dal repo senza installare
 boa/store.py       la lavagna append-only, le voci, i segnalibri
 boa/consegna.py    la cornice di non fidatezza, l'hook, la spinta e la sua soglia
 boa/sessioni.py    chi sono io, chi è vivo, dove sta il transcript

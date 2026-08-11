@@ -311,7 +311,8 @@ niente scritto a mano.
 ## Com'è fatto
 
 ```
-bin/boa            la CLI: scrivi, leggi, lavagna, chiudi, chi, hook, manda
+boa/cli.py         la CLI: scrivi, leggi, lavagna, chiudi, chi, hook, manda
+bin/boa            lo stesso comando, lanciato dal repo senza installare
 boa/store.py       la lavagna append-only, le voci, i segnalibri
 boa/consegna.py    la cornice, l'hook, la spinta e la sua soglia
 boa/sessioni.py    chi sono io, chi è vivo, dove sta il transcript

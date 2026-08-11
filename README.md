@@ -309,7 +309,8 @@ hand.
 ## How it is made
 
 ```
-bin/boa            the CLI: scrivi, leggi, lavagna, chiudi, chi, hook, manda
+boa/cli.py         the CLI: scrivi, leggi, lavagna, chiudi, chi, hook, manda
+bin/boa            the same command, launched from the repo without installing
 boa/store.py       the append-only blackboard, the entries, the bookmarks
 boa/consegna.py    the frame, the hook, the push and its threshold
 boa/sessioni.py    who I am, who is alive, where the transcript lives
