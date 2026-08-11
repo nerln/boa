@@ -236,6 +236,9 @@ def scrivi(da, a=TUTTI, tipo="messaggio", testo="", riferimento=None, path=None,
             "sessione": da.get("sessione") or "anonimo",
             "progetto": da.get("progetto") or "",
             "cwd": da.get("cwd") or "",
+            # Quanto vale il nome, non quanto vale il contenuto. Chi legge deve
+            # poter distinguere "lo dice Claude Code" da "lo dice chi scrive".
+            "prova": da.get("prova") or "anonima",
         },
         "a": norm_a(a),
         "tipo": tipo,
@@ -260,6 +263,9 @@ def chiudi(voce_id, da, esito="", path=None):
             "sessione": da.get("sessione") or "anonimo",
             "progetto": da.get("progetto") or "",
             "cwd": da.get("cwd") or "",
+            # Quanto vale il nome, non quanto vale il contenuto. Chi legge deve
+            # poter distinguere "lo dice Claude Code" da "lo dice chi scrive".
+            "prova": da.get("prova") or "anonima",
         },
         "chiude": str(voce_id)[:64],
         "testo": "" if esito is None else str(esito),

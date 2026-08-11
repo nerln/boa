@@ -141,6 +141,47 @@ def cmd_hook(args):
     return 0
 
 
+def cmd_registro(args):
+    """Chi ha scritto quanto, e con che identita'. E' l'audit della lavagna.
+
+    Serve perche' le difese di boa sono tutte dentro la consegna, cioe' agiscono
+    su chi legge. Questa guarda dall'altra parte: chi scrive, quanto, e con che
+    nome. Una sessione che scrive molto piu' delle altre, o che scrive sempre
+    con identita' dichiarata, e' la cosa che si vuole poter vedere senza dover
+    leggere la lavagna riga per riga.
+    """
+    voci = store.tutte()
+    if not voci:
+        print("la lavagna e' vuota.")
+        return 0
+    per_autore = {}
+    for v in voci:
+        da = v.get("da") or {}
+        chiave = (da.get("sessione") or "anonimo", da.get("prova") or "anonima")
+        r = per_autore.setdefault(chiave, {"n": 0, "tipi": {}, "prog": set(), "ultima": 0})
+        r["n"] += 1
+        r["tipi"][v.get("tipo", "?")] = r["tipi"].get(v.get("tipo", "?"), 0) + 1
+        if da.get("progetto"):
+            r["prog"].add(da["progetto"])
+        r["ultima"] = max(r["ultima"], v.get("ts") or 0)
+    tot = len(voci)
+    print(f"{tot} voci sulla lavagna, {len(per_autore)} autori\n")
+    print(f"{'sessione':<10}{'identita':<13}{'voci':>6}{'quota':>7}  tipi / progetti")
+    for (sid, prova), r in sorted(per_autore.items(), key=lambda kv: -kv[1]["n"]):
+        tipi = ", ".join(f"{k}x{v}" for k, v in sorted(r["tipi"].items(), key=lambda kv: -kv[1]))
+        prog = ", ".join(sorted(r["prog"]))[:28]
+        print(f"{sid[:8]:<10}{prova:<13}{r['n']:>6}{r['n'] * 100 // tot:>6}%  {tipi}"
+              + (f"   [{prog}]" if prog else ""))
+    dominante = max(per_autore.items(), key=lambda kv: kv[1]["n"])
+    if dominante[1]["n"] * 2 > tot and tot >= 6:
+        print(f"\n  {dominante[0][0][:8]} ha scritto piu' della meta' della lavagna.")
+    dich = sum(r["n"] for (s_, pr), r in per_autore.items() if pr == "dichiarata")
+    if dich:
+        print(f"  {dich} voci con identita' solo dichiarata: quel nome non l'ha "
+              f"verificato nessuno.")
+    return 0
+
+
 def cmd_manda(args):
     mia = _identita(args)
     dest = store.safe(args.sessione)
@@ -199,6 +240,9 @@ def build():
     s.add_argument("id")
     s.add_argument("esito", nargs="?", default="")
     s.set_defaults(fn=cmd_chiudi)
+
+    s = sub.add_parser("registro", help="chi ha scritto quanto, e con che identita'")
+    s.set_defaults(fn=cmd_registro)
 
     s = sub.add_parser("chi", help="quali sessioni sono vive adesso")
     s.set_defaults(fn=cmd_chi)

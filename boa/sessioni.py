@@ -157,24 +157,52 @@ def progetto(cwd=None):
     return os.path.basename(cwd.rstrip("/")) or cwd
 
 
+# Quanto vale il nome che una voce si da'. Non e' una gerarchia di fiducia sul
+# contenuto: il contenuto resta non fidato sempre. E' una gerarchia su **chi
+# dice di essere**, e serve perche' senza di essa la cornice presentava come un
+# fatto ("l'ha scritto la sessione X") una cosa che chiunque poteva affermare.
+#
+# La domanda di Eugenio, l'11/08/2026: se un agente puo' far comparire testo nel
+# contesto di un altro, cosa gli impedisce di fingersi qualcun altro per
+# ottenere qualcosa? Prima di oggi: niente.
+ATTESTATA = "attestata"    # l'id viene dal payload di un hook: lo dice Claude Code
+DEDOTTA = "dedotta"        # una sola sessione viva lavora in questa cartella
+DICHIARATA = "dichiarata"  # --io o $BOA_SESSION: lo dice chi scrive, nessuno ha verificato
+ANONIMA = "anonima"        # nessuno lo sa
+
+
 def io(esplicito=None, cwd=None):
-    """Chi sono, nell'ordine dichiarato nel contratto."""
+    """Chi sono. Restituisce solo l'id: `chi_sono` dice anche quanto vale."""
+    return chi_sono(esplicito, cwd)[0]
+
+
+def chi_sono(esplicito=None, cwd=None, da_hook=None):
+    """(id, quanto vale quel nome).
+
+    `da_hook` lo passa soltanto consegna.hook(), che ha letto il payload di
+    Claude Code: e' l'unica strada per cui un id vale ATTESTATA. Nessun verbo
+    della CLI puo' produrre un'attestazione, per costruzione.
+    """
+    s = store.safe(da_hook)
+    if s:
+        return s, ATTESTATA
     s = store.safe(esplicito)
     if s:
-        return s
+        return s, DICHIARATA
     s = store.safe(os.environ.get("BOA_SESSION"))
     if s:
-        return s
+        return s, DICHIARATA
     qui = os.path.realpath(cwd or os.getcwd())
     mie = [v for v in vive() if v.get("cwd") and os.path.realpath(v["cwd"]) == qui]
     if len(mie) == 1:
-        return mie[0]["sessione"]
-    return ANONIMO
+        return mie[0]["sessione"], DEDOTTA
+    return ANONIMO, ANONIMA
 
 
-def identita(esplicito=None, cwd=None):
+def identita(esplicito=None, cwd=None, da_hook=None):
     cwd = cwd or os.getcwd()
-    return {"sessione": io(esplicito, cwd), "progetto": progetto(cwd), "cwd": cwd}
+    sid, prova = chi_sono(esplicito, cwd, da_hook)
+    return {"sessione": sid, "progetto": progetto(cwd), "cwd": cwd, "prova": prova}
 
 
 def transcript(sid):
