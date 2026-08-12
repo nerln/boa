@@ -236,6 +236,27 @@ def cornice(voci, titolo=None, note=None):
     return "\n".join(pezzi)
 
 
+def lavagna(progetto=None):
+    """Il testo di `boa lavagna`: quello che e' aperto, incorniciato. "" se non c'e' niente.
+
+    Sta qui e non nella CLI perche' da oggi i lettori sono due, la CLI e il server MCP, e
+    la cosa che non deve divergere fra i due e' proprio come il testo della lavagna viene
+    presentato: il titolo che avverte che non e' una consegna, e la nota su quello che e'
+    stato preso e non chiuso. Due copie di questa funzione sarebbero due cornici diverse
+    sulla stessa lavagna, e una delle due invecchierebbe.
+    """
+    voci = store.aperte(progetto=progetto)
+    if not voci:
+        return ""
+    note = {}
+    for v in voci:
+        if v.get("tipo") == "preso":
+            note[v["id"]] = "preso e non ancora dichiarato finito"
+    titolo = APERTURA.format(n=len(voci), parola="voce" if len(voci) == 1 else "voci")
+    titolo = titolo.replace("da altre sessioni", "aperte sulla lavagna")
+    return cornice(voci, titolo=titolo, note=note)
+
+
 # ----------------------------------------------------------------------------- l'hook
 
 def hook(dati):

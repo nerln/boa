@@ -13,6 +13,7 @@ dependencies = []
 
 [project.scripts]
 boa = "boa.cli:main"
+boa-mcp = "boa.mcp:main"
 
 [build-system]
 requires = ["hatchling"]

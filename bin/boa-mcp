@@ -1,0 +1,12 @@
+#!/usr/bin/env python3
+"""Server MCP di boa. Lo lancia Claude Code, parla JSON-RPC su stdio."""
+import os
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+sys.path.insert(0, ROOT)
+
+from boa.mcp import main  # noqa: E402
+
+if __name__ == "__main__":
+    sys.exit(main())

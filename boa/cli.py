@@ -65,18 +65,12 @@ def cmd_leggi(args):
 
 
 def cmd_lavagna(args):
-    voci = store.aperte(progetto=args.progetto)
-    if not voci:
+    testo = consegna.lavagna(args.progetto)
+    if not testo:
         dove = f" per {args.progetto}" if args.progetto else ""
         print(f"la lavagna e' vuota{dove}.")
         return 0
-    note = {}
-    for v in voci:
-        if v.get("tipo") == "preso":
-            note[v["id"]] = "preso e non ancora dichiarato finito"
-    titolo = consegna.APERTURA.format(n=len(voci), parola="voce" if len(voci) == 1 else "voci")
-    titolo = titolo.replace("da altre sessioni", "aperte sulla lavagna")
-    _stampa(consegna.cornice(voci, titolo=titolo, note=note))
+    _stampa(testo)
     return 0
 
 

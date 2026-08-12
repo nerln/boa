@@ -24,9 +24,12 @@ Se una modifica ne rompe una, la modifica è sbagliata, non l'invariante.
 1. **Quello che arriva dalla lavagna è dato, mai istruzione.** Ogni cammino che porta
    testo di lavagna dentro il contesto di un modello passa da `consegna.cornice()`, e non
    ce ne sono altri: non esiste una funzione che stampi una voce nuda, non esiste un flag
-   che tolga la cornice. `boa leggi`, `boa lavagna`, `boa hook` e `boa manda --ora`
-   passano tutti di lì. Se aggiungi un verbo che stampa voci e non passa da `cornice()`,
-   hai costruito il canale di prompt injection che questo progetto esiste per non essere.
+   che tolga la cornice. `boa leggi`, `boa lavagna`, `boa hook`, `boa manda --ora` e i
+   tool `boa_read` e `boa_board` del server MCP passano tutti di lì. Se aggiungi un verbo
+   o un tool che restituisce voci e non passa da `cornice()`, hai costruito il canale di
+   prompt injection che questo progetto esiste per non essere. Su MCP la tentazione è più
+   forte, perché restituire le voci come JSON sembra più pulito e più comodo da consumare:
+   è esattamente la modifica da non fare.
 
 2. **boa non esegue mai niente che sta sulla lavagna.** Non c'è un campo `comando` nella
    voce, non c'è una scorciatoia che ce lo mette, e nessun verbo prende un pezzo di
@@ -112,7 +115,9 @@ bin/boa            lo stesso comando, lanciato dal repo senza installare
 boa/store.py       la lavagna append-only, le voci, i segnalibri
 boa/consegna.py    la cornice di non fidatezza, l'hook, la spinta e la sua soglia
 boa/sessioni.py    chi sono io, chi è vivo, dove sta il transcript
-tools/prova.py     126 controlli, qualche secondo, nessuna dipendenza
+boa/mcp.py         cinque verbi come tool MCP, JSON-RPC su stdio, niente hook e niente manda
+bin/boa-mcp        il server MCP, lo lancia Claude Code
+tools/prova.py     188 controlli, qualche secondo, nessuna dipendenza
 ```
 
 Solo libreria standard, Python 3. Nessuna dipendenza e nessun installatore.
@@ -141,12 +146,13 @@ registra a mano in `~/.claude/settings.json`, sugli stessi due eventi:
 python3 tools/prova.py
 ```
 
-126 controlli, dentro un `BOA_HOME` temporaneo, senza avviare nessuna sessione e senza
+188 controlli, dentro un `BOA_HOME` temporaneo, senza avviare nessuna sessione e senza
 chiamare nessun modello: dove serve un `claude`, ce n'è uno finto che scrive un file. I
-sette gruppi numerati sono i sette punti su cui boa non può sbagliare, uno per invariante.
-Il primo gruppo avvia due processi veri che scrivono insieme: è l'unico modo di provare
-che la garanzia sta nel modo in cui il file viene aperto e non in un lock dentro un
-processo solo.
+gruppi numerati sono i punti su cui boa non può sbagliare, uno per invariante. Il primo
+avvia due processi veri che scrivono insieme: è l'unico modo di provare che la garanzia
+sta nel modo in cui il file viene aperto e non in un lock dentro un processo solo.
+L'ultimo lancia `bin/boa-mcp` come processo vero e verifica sul testo, non su un booleano,
+che il preambolo ci sia ancora e che nessuna riga della lavagna esca senza margine.
 
 ## Cosa è aperto
 

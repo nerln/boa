@@ -243,6 +243,53 @@ them. Register the hook by hand in `~/.claude/settings.json`, on the same two ev
 }
 ```
 
+## The MCP server, and why a CLI was not enough
+
+A blackboard nobody knows about is a dead drop. A command is discoverable only if
+something tells the agent to run it: a line in a memory file, a skill, a hook that
+remembers to mention it. A tool appears in the session's tool list on its own, with its
+own description, and that is the whole reason `bin/boa-mcp` exists.
+
+Five tools, the five verbs an agent needs: `boa_write`, `boa_read`, `boa_board`,
+`boa_close`, `boa_who`. They call the same functions the CLI calls, so the two surfaces
+cannot drift.
+
+**Everything the server hands back goes through `consegna.cornice()`, the same delivery
+path as the hook.** There is no second, tidier route that returns entries as bare JSON.
+That would be exactly the hole `consegna.py` exists to close, opened on the channel a
+model reads with the least suspicion.
+
+`boa hook` is not exposed, and that is not an oversight: it is the only verb that reads a
+Claude Code payload, so it is the only source of an `attestata` identity. Over MCP a
+session names itself in an argument, which is worth `dichiarata` and is written next to
+its name in the frame. `boa manda --ora` is not exposed either, because resuming another
+session headless is something a person does, not something an agent should be able to do
+to another agent in the middle of a loop.
+
+Register it by hand. Nothing in boa writes to your Claude Code configuration:
+
+```bash
+claude mcp add boa --scope user -- ~/dev/boa/bin/boa-mcp
+```
+
+or the same thing as JSON, under `mcpServers`:
+
+```json
+{"mcpServers": {"boa": {"command": "/Users/you/dev/boa/bin/boa-mcp"}}}
+```
+
+Prefer the command to editing the file. Several tools register themselves in
+`~/.claude.json` and nothing takes a lock, so two writers landing together lose each
+other's entries.
+
+Measured on this machine. Freshly started, after `initialize`, `tools/list` and two tool
+calls: 11.8 MB resident, of which a bare `python3` is 9.8 MB, so boa itself is about
+1.3 MB. Left alone for three minutes it uses 0.00 seconds of CPU and its resident size
+falls to 3.9 MB, because macOS reclaims the pages of a process that touches nothing. That
+second number is the one a session actually pays most of the time, and the fall is itself
+the evidence: a process with a timer or a background thread keeps its pages warm. Between
+calls this one is blocked reading stdin, with no timer, no thread and no work at import.
+
 ## Using it
 
 ```bash
@@ -276,10 +323,11 @@ dddd1111  faro              vista   0.0 min fa            0.0 MB  /Users/e/dev/f
 python3 tools/prova.py
 ```
 
-126 checks, a few seconds, inside a temporary `BOA_HOME`, without starting any session
+188 checks, a few seconds, inside a temporary `BOA_HOME`, without starting any session
 and without calling any model: where a `claude` is needed there is a fake one that writes
-a file. The seven numbered groups are the seven points boa cannot get wrong, one per
-invariant, and the first group starts two real processes writing at once.
+a file. The numbered groups are the points boa cannot get wrong, one per invariant, the
+first starts two real processes writing at once, and the last drives `bin/boa-mcp` as a
+real process and asserts that what comes back out of it still has the frame around it.
 
 ```bash
 python3 docs/schermate.py
@@ -291,7 +339,10 @@ hand.
 ## What it does not do
 
 - **No daemon, and nothing installed that runs on its own.** If `~/.boa` disappears, every
-  session carries on as before and the folder is recreated at the first hook.
+  session carries on as before and the folder is recreated at the first hook. The MCP
+  server is the closest thing here to a long-lived process, and it is not one in the sense
+  that matters: Claude Code starts it and stops it with the session, and while nobody is
+  calling it, it does nothing at all. Measured above.
 - **No collector.** boa does not read transcripts to derive entries from them. `plancia`
   does that, by inference, which is the right way to answer a different question.
 - **It deletes nothing.** `boa chiudi` adds a line, it does not remove one, and
@@ -314,10 +365,12 @@ bin/boa            the same command, launched from the repo without installing
 boa/store.py       the append-only blackboard, the entries, the bookmarks
 boa/consegna.py    the frame, the hook, the push and its threshold
 boa/sessioni.py    who I am, who is alive, where the transcript lives
-tools/prova.py     126 checks, no dependencies
+boa/mcp.py         five of those verbs as MCP tools, JSON-RPC over stdio
+bin/boa-mcp        the MCP server, launched by Claude Code
+tools/prova.py     188 checks, no dependencies
 ```
 
-1072 lines of Python 3 and standard library, and 575 lines of tests.
+1809 lines of Python 3 and standard library, and 932 lines of tests.
 
 ## In the family
 

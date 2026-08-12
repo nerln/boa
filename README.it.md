@@ -245,6 +245,54 @@ si registra a mano in `~/.claude/settings.json`, sugli stessi due eventi:
 }
 ```
 
+## Il server MCP, e perché la CLI non bastava
+
+Una lavagna che nessuno sa che c'è è una buca delle lettere murata. Un comando si scopre
+solo se qualcosa dice all'agente di lanciarlo: una riga in un file di memoria, una skill,
+un hook che si ricorda di nominarlo. Un tool compare da solo nell'elenco della sessione,
+con la sua descrizione, ed è tutta la ragione per cui esiste `bin/boa-mcp`.
+
+Cinque tool, i cinque verbi che servono a un agente: `boa_write`, `boa_read`, `boa_board`,
+`boa_close`, `boa_who`. Chiamano le stesse funzioni che chiama la CLI, quindi le due
+superfici non possono divergere.
+
+**Tutto quello che il server restituisce passa da `consegna.cornice()`, la stessa
+consegna dell'hook.** Non c'è una seconda strada, più pulita, che restituisca le voci
+nude in JSON: sarebbe esattamente il buco che `consegna.py` esiste per chiudere, e per di
+più aperto sul canale che un modello legge con meno diffidenza di tutti.
+
+`boa hook` non è esposto, e non è una dimenticanza: è l'unico verbo che legge un payload
+di Claude Code, quindi l'unica sorgente di identità `attestata`. Su MCP una sessione si dà
+un nome in un argomento, e quel nome vale `dichiarata`, che è quello che la cornice scrive
+accanto. Nemmeno `boa manda --ora`: riprendere un'altra sessione in headless è una cosa
+che fa una persona, non una che un agente deve poter fare a un altro agente in mezzo a un
+ciclo.
+
+Si registra a mano. Niente in boa scrive nella configurazione di Claude Code:
+
+```bash
+claude mcp add boa --scope user -- ~/dev/boa/bin/boa-mcp
+```
+
+oppure la stessa cosa in JSON, sotto `mcpServers`:
+
+```json
+{"mcpServers": {"boa": {"command": "/Users/tuonome/dev/boa/bin/boa-mcp"}}}
+```
+
+Meglio il comando che modificare il file a mano: in `~/.claude.json` si registrano da soli
+diversi strumenti e nessuno prende un lock, quindi due scrittori insieme si perdono le
+voci a vicenda.
+
+Misurato su questa macchina. Appena avviato, dopo `initialize`, `tools/list` e due
+chiamate: 11,8 MB residenti, di cui 9,8 sono un `python3` nudo, quindi boa è circa 1,3 MB.
+Lasciato in pace per tre minuti consuma 0,00 secondi di CPU e scende a 3,9 MB residenti,
+perché macOS si riprende le pagine di un processo che non tocca niente. Il secondo numero
+è quello che una sessione paga davvero quasi sempre, e la discesa è la prova: un processo
+con un timer o un thread di sottofondo si tiene le pagine calde. Fra una chiamata e
+l'altra questo è bloccato sulla lettura di stdin, senza timer, senza thread e senza lavoro
+all'import.
+
 ## Uso
 
 ```bash
@@ -278,10 +326,12 @@ dddd1111  faro              vista   0.0 min fa            0.0 MB  /Users/e/dev/f
 python3 tools/prova.py
 ```
 
-126 controlli, qualche secondo, dentro un `BOA_HOME` temporaneo, senza avviare nessuna
+188 controlli, qualche secondo, dentro un `BOA_HOME` temporaneo, senza avviare nessuna
 sessione e senza chiamare nessun modello: dove serve un `claude`, ce n'è uno finto che
-scrive un file. I sette gruppi numerati sono i sette punti su cui boa non può sbagliare,
-uno per invariante, e il primo gruppo avvia due processi veri che scrivono insieme.
+scrive un file. I gruppi numerati sono i punti su cui boa non può sbagliare, uno per
+invariante; il primo avvia due processi veri che scrivono insieme, e l'ultimo lancia
+`bin/boa-mcp` come processo vero e verifica che quello che ne esce abbia ancora la
+cornice intorno.
 
 ```bash
 python3 docs/schermate.py
@@ -293,7 +343,10 @@ niente scritto a mano.
 ## Cosa non fa
 
 - **Niente demone, e niente di installato che giri da solo.** Se `~/.boa` sparisce, tutte
-  le sessioni continuano come prima e la cartella si ricrea al primo hook.
+  le sessioni continuano come prima e la cartella si ricrea al primo hook. Il server MCP è
+  la cosa più simile a un processo lungo che ci sia qui dentro, e non lo è nel senso che
+  conta: lo avvia e lo ferma Claude Code insieme alla sessione, e mentre nessuno lo chiama
+  non fa assolutamente niente. Misurato qui sopra.
 - **Nessun raccoglitore.** boa non legge i transcript per ricavarne voci. Quello lo fa
   `plancia`, deducendo, ed è il modo giusto di rispondere a un'altra domanda.
 - **Non cancella niente.** `boa chiudi` aggiunge una riga, non ne toglie una, e
@@ -316,10 +369,12 @@ bin/boa            lo stesso comando, lanciato dal repo senza installare
 boa/store.py       la lavagna append-only, le voci, i segnalibri
 boa/consegna.py    la cornice, l'hook, la spinta e la sua soglia
 boa/sessioni.py    chi sono io, chi è vivo, dove sta il transcript
-tools/prova.py     126 controlli, nessuna dipendenza
+boa/mcp.py         cinque di quei verbi come tool MCP, JSON-RPC su stdio
+bin/boa-mcp        il server MCP, lo lancia Claude Code
+tools/prova.py     188 controlli, nessuna dipendenza
 ```
 
-1072 righe di Python 3 e libreria standard, e 575 righe di test.
+1809 righe di Python 3 e libreria standard, e 932 righe di test.
 
 ## In famiglia
 
